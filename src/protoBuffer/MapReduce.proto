@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package protoBuffer;
+option go_package = "MapReduceGo/stubs";
+import "google/protobuf/empty.proto";
+
+message NumberChunk{
+  repeated int32 numbers = 1;
+}
+
+message Reply{
+  string status = 1;
+}
+
+service MapService{
+  rpc MapChunk(NumberChunk) returns (Reply);
+  rpc StartReduce(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+service ReduceService{
+  rpc ReduceChunk(NumberChunk) returns (Reply);
+}

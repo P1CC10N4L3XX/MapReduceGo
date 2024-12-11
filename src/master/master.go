@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -52,13 +54,25 @@ func callMapper(address string, chunk []int, c chan string) {
 	utils.CheckError(err)
 	defer conn.Close()
 
-	client := stubs.NewMapperServiceClient(conn)
+	client := stubs.NewMapServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	resp, err := client.ProcessChunk(ctx, req)
+	resp, err := client.MapChunk(ctx, req)
 	utils.CheckError(err)
 	c <- fmt.Sprintf("Mapper %s risponde: %s\n", address, resp.Status)
 
+}
+
+func notifyMapper(address string, c chan string) {
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	utils.CheckError(err)
+	defer conn.Close()
+	client := stubs.NewMapServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_, err = client.StartReduce(ctx, &emptypb.Empty{})
+	utils.CheckError(err)
+	c <- fmt.Sprintf("Notificato mapper %s di avviare la reduce...", address)
 }
 
 func main() {
@@ -75,10 +89,16 @@ func main() {
 	utils.CheckError(err)
 
 	numbers := fileToSlice(string(data[:n]))
-	chunks := chunkSlice(numbers, config.MAPPER_NUMBER)
+	chunks := chunkSlice(numbers, int(math.Ceil(float64(len(numbers)/config.MAPPER_NUMBER))))
 	c := make(chan string)
 	for i, chunk := range chunks {
 		go callMapper(config.MAPPER_ADDRESS[i], chunk, c)
+	}
+	for i := 0; i < len(chunks); i++ {
+		fmt.Println(<-c)
+	}
+	for i := 0; i < len(chunks); i++ {
+		go notifyMapper(config.MAPPER_ADDRESS[i], c)
 	}
 	for i := 0; i < len(chunks); i++ {
 		fmt.Println(<-c)

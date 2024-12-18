@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MapReduceGo/src/config"
 	"MapReduceGo/src/protoBuffer/stubs"
 	"MapReduceGo/src/utils"
 	"context"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 )
 
 type mapperServer struct {
@@ -30,8 +32,43 @@ func (s *mapperServer) MapChunk(ctx context.Context, chunk *stubs.NumberChunk) (
 	return &stubs.Reply{Status: "Success"}, nil
 }
 
+func callReducer(chunk []int, address string, c chan string) {
+	if chunk == nil {
+		c <- fmt.Sprintf("Il chunk da inviare al reducer %s è nil...\n", address)
+		return
+	}
+	req := &stubs.NumberChunk{Numbers: make([]int32, len(chunk))}
+	for j, num := range chunk {
+		req.Numbers[j] = int32(num)
+	}
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	utils.CheckError(err)
+	defer conn.Close()
+
+	client := stubs.NewReduceServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	resp, err := client.ReduceChunk(ctx, req)
+	c <- fmt.Sprintf("Reducer %s risponde: %s\n", address, resp.Status)
+}
+
+func splitChunk(numbers []int) ([]int, []int) {
+	for i, n := range numbers {
+		if n > config.REDUCER_SPLIT_NUMBER {
+			return numbers[:i], numbers[i:]
+		}
+	}
+	return numbers, nil
+}
+
 func (s *mapperServer) StartReduce(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
 	fmt.Println("Mapper: invia ai reducer il chunk ", numbers)
+	chunk1, chunk2 := splitChunk(numbers)
+	c := make(chan string)
+	go callReducer(chunk1, config.REDUCER_ADDRESS[0], c)
+	go callReducer(chunk2, config.REDUCER_ADDRESS[1], c)
+	fmt.Println(<-c)
+	fmt.Println(<-c)
 	return &emptypb.Empty{}, nil
 }
 

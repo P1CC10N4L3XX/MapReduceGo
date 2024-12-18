@@ -9,28 +9,34 @@ Si vuole implementare un sistema distribuito che esegua le operazioni di map e r
 
 # Utilizzo del programma
 
-- Nella directory principale del progetto eseguire il comando 
+- Nella directory principale del progetto eseguire il comando di seguito 
 
 ```
 make
 
 ```
-- Eseguire il comando per aggiungere all'utente i permessi di esecuzione sul file ```init.sh```
+Eseguire il comando di seguito per aggiungere all'utente i permessi di esecuzione sul file ```init.sh```
 
 ```
-chmod -x init.sh
+chmod +x init.sh
 
 ```
-- Eseguire il comando per avviare i vari mapper e reducer
+Eseguire il comando di seguito per avviare i vari mapper e reducer
 
 ```
 ./init.sh
 
 ```
-- Eseguire il comando per avviare il master
+Eseguire il comando di seguito per avviare il master (assicurandosi che i server mapper e reduce siano stati avviati)
 
 ```
 ./builds/master <input_file>
 
 ```
+
+Nella directory del progetto si può trovare un file ```prova.txt``` che definisce come devono essere strutturati i dataset da passare al master
+
+# File di output
+
+Sarà possibile trovare i file di output ```reducer1.txt``` e ```reducer2.txt``` all'interno della cartella ```/output```
 

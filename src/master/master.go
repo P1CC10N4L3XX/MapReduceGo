@@ -9,7 +9,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -32,15 +31,25 @@ func fileToSlice(data string) []int {
 	return numbers
 }
 
-func chunkSlice(numbers []int, chunkSize int) [][]int {
+func chunkSlice(numbers []int, numChunks int) [][]int {
 	var chunks [][]int
-	for i := 0; i < len(numbers); i += chunkSize {
+	totalElements := len(numbers)
+
+	if numChunks <= 0 {
+		return chunks
+	}
+
+	// Calcola la dimensione approssimativa di ciascun chunk
+	chunkSize := (totalElements + numChunks - 1) / numChunks // Arrotonda verso l'alto
+
+	for i := 0; i < totalElements; i += chunkSize {
 		end := i + chunkSize
-		if end > len(numbers) {
-			end = len(numbers)
+		if end > totalElements {
+			end = totalElements
 		}
 		chunks = append(chunks, numbers[i:end])
 	}
+
 	return chunks
 }
 
@@ -89,7 +98,7 @@ func main() {
 	utils.CheckError(err)
 
 	numbers := fileToSlice(string(data[:n]))
-	chunks := chunkSlice(numbers, int(math.Ceil(float64(len(numbers)/config.MAPPER_NUMBER))))
+	chunks := chunkSlice(numbers, config.MAPPER_NUMBER)
 	c := make(chan string)
 	for i, chunk := range chunks {
 		go callMapper(config.MAPPER_ADDRESS[i], chunk, c)
